@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Port Mapper</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#edf0ee;--ink:#1b2321;--mute:#5b6865;--card:#fff;--line:#cdd5d2;--acc:#1c7a6c;--accink:#fff;--panel:#2b3432;--sock:#0f1413;--hole:#3d4a47}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121716;--ink:#e6ece9;--mute:#93a09b;--card:#1b2220;--line:#2f3a37;--acc:#4cc2b0;--accink:#0b1210;--panel:#252e2c;--hole:#44524f}}
+:root[data-theme="dark"]{--bg:#121716;--ink:#e6ece9;--mute:#93a09b;--card:#1b2220;--line:#2f3a37;--acc:#4cc2b0;--accink:#0b1210;--panel:#252e2c;--hole:#44524f}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:16px 14px 150px;max-width:1200px;margin:0 auto}
+h1{font-size:22px;margin:4px 0 2px}h2{font-size:16px;margin:0}
+.sub,.tot{color:var(--mute)}.sub{margin:0 0 16px}.tot{font-size:13px}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+label{display:flex;gap:6px;align-items:center;font-size:14px}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px;min-width:0}
+input[type=number]{width:60px}input[type=color]{padding:0;width:36px;height:30px}input[type=checkbox]{width:auto}
+.name{font-weight:600;width:160px}
+button{font:inherit;cursor:pointer;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 10px}
+button.pri{background:var(--acc);color:var(--accink);border-color:var(--acc);font-weight:600}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:99px;opacity:.5}
+.chip.on{opacity:1;border-color:var(--ink);font-weight:600}
+.chip.sm{padding:1px 8px;font-size:12px;margin:0 4px 4px 0}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c)}
+.badge{font-size:12px;font-weight:600;border-radius:99px;padding:2px 9px}
+.badge.up{background:#f3c24a;color:#2b2200}.badge.wf{background:var(--acc);color:var(--accink)}.badge.sp{background:#5aa0ff;color:#06182e}
+#stage{overflow-x:auto}
+#inner{position:relative;width:max-content;min-width:100%}
+#cables{position:absolute;left:0;top:0;pointer-events:none;z-index:3;overflow:visible}
+.sw,.pc{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:12px;background:var(--card)}
+.pc{border-left:6px solid var(--c)}
+.face,.chassis{display:flex;gap:8px;background:var(--panel);padding:10px;border-radius:8px;width:max-content;min-width:100%}
+.grid{display:grid;grid-auto-flow:column;grid-auto-columns:46px;gap:5px}
+.upg{margin-left:12px;padding-left:14px;border-left:2px dashed var(--hole)}
+.spg{margin-left:12px;padding-left:14px;border-left:2px dotted #5aa0ff}
+.port{position:relative;width:46px;height:54px;padding:3px 2px 6px;border:0;border-radius:4px;background:var(--sock);color:#dfe8e5;display:flex;flex-direction:column;align-items:center;justify-content:space-between;font-size:11px;line-height:1.15;outline:1px solid var(--hole);overflow:hidden}
+.port b{font-size:13px;font-variant-numeric:tabular-nums;max-width:44px;overflow:hidden}
+.port i{font-style:normal;opacity:.7;text-align:center;overflow:hidden;white-space:nowrap;max-width:44px}
+.port::after{content:"";position:absolute;left:50%;top:0;width:12px;height:3px;margin-left:-6px;background:var(--hole);border-radius:0 0 2px 2px}
+.port.on::before{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--g)}
+.port.up{outline-color:#d99a1a}.port.sp{outline-color:#5aa0ff}
+.port.sel{outline:2px solid #fff;outline-offset:1px;background:#1d3b36}
+.nic{background:rgba(255,255,255,.05);border:1px solid var(--hole);border-radius:6px;padding:6px}
+.nic.spn{border:1px dotted #5aa0ff}
+.nic .ctl{display:flex;gap:4px;align-items:center;margin-bottom:6px;color:#cfd9d6;font-size:12px}
+.nic .ctl input{width:48px;padding:2px 4px;font-size:12px}
+.nic .ctl button{padding:1px 6px;font-size:12px;background:transparent;color:#cfd9d6;border-color:var(--hole)}
+.pp{display:flex;gap:4px}
+table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:8px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.scroll{overflow-x:auto}
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:10;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.btn{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:6px;padding:5px 10px;background:var(--bg);cursor:pointer}
+body.dv #stage,body.dv #tbl,body.dv #bar{display:none}
+body:not(.dv) #diag{display:none}
+.dwrap{overflow:auto;height:calc(100vh - 300px);min-height:360px;border:1px solid var(--line);border-radius:10px;background-color:var(--card);background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:22px 22px}
+#dsvg{display:block}
+.nd{cursor:grab;touch-action:none}
+.nb{fill:var(--panel);stroke-width:2}
+.nt{fill:#e6ece9;font:600 13px system-ui,sans-serif}
+.ns{fill:#aab8b4;font:10px system-ui,sans-serif}
+.gb{fill:none;stroke:var(--hole);stroke-dasharray:3 2}
+.gl{stroke:var(--hole);stroke-dasharray:3 3}
+.pr{fill:var(--sock);stroke:var(--hole)}.pr.lk{stroke:#fff;stroke-width:1.5}
+.eh{fill:none;stroke:transparent;stroke-width:14;pointer-events:stroke;cursor:pointer}
+.el{font:10px system-ui,sans-serif;fill:var(--ink);paint-order:stroke;stroke:var(--card);stroke-width:3px;text-anchor:middle;pointer-events:none}
+</style></head>
+<body>
+<h1>Port Mapper</h1>
+<div class="row"><button class="chip on" data-a="vw" data-w="cf">Config</button><button class="chip" data-a="vw" data-w="dg">Diagram</button><span style="flex:1"></span><button data-a="xport">Download data</button><label class="btn">Load data<input type="file" id="imp" accept=".json,application/json" hidden></label></div>
+<p class="sub">Config: tap a port to set its VLANs, then a second free port to cable it. Diagram: see how everything connects.</p>
+<section id="cab"></section>
+<div id="stage"><div id="inner"><svg id="cables"></svg><div id="app"></div></div></div>
+<div id="diag"></div>
+<section id="tbl"></section>
+<div id="bar"></div>
+<script>
+const K='portmap-v2',COL=['#e4572e','#17a398','#f3a712','#3b6fd4','#a14edb','#4c9a2a','#d6336c','#00a6d6','#8a6d3b','#6b7a8f'],TY=['Console','Mgmt','SFP','SFP+','PoE','10G','IPMI','Other'];
+const uid=()=>Math.random().toString(36).slice(2,7);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S=null;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+if(!S||!S.pcs)S={sws:[{id:uid(),name:'Switch 1',n:24,rows:2,up:2,wifi:false,ssid:'',sp:[{id:uid(),name:'Console',t:'Console'}]}],
+ pcs:[{id:uid(),name:'PC-1',nics:[{id:uid(),n:1},{id:uid(),n:4},{id:uid(),n:2}],sp:[]}],
+ vlans:[{id:'v1',name:'VLAN 1 Default',c:'#17a398'},{id:'v10',name:'VLAN 10',c:'#e4572e'},{id:'v20',name:'VLAN 20',c:'#3b6fd4'}],
+ show:{v1:true,v10:true,v20:true},newV:'v1',links:[],pv:{}};
+S.sws.forEach(s=>s.sp=s.sp||[]);S.pcs.forEach(p=>p.sp=p.sp||[]);S.pv=S.pv||{};
+let sel=null,editV=false;const spOpen=new Set();S.pos=S.pos||{};let view=S.view||'cf',Z=1,dsel=null,dim={w:800,h:400};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id);
+const vl=id=>S.vlans.find(v=>v.id===id);
+const vcol=id=>vl(id)?vl(id).c:'#888';
+const linkOf=k=>S.links.find(l=>l.a===k||l.b===k);
+const other=(l,k)=>l.a===k?l.b:l.a;
+const getV=k=>{const L=linkOf(k);return L?L.v:(S.pv[k]||[]).filter(vl)};
+const dev=id=>S.sws.find(s=>s.id===id)||S.pcs.find(p=>p.id===id);
+function info(k){const p=k.split(':');
+ if(p[0]==='sw'){const s=S.sws.find(x=>x.id===p[1]);if(!s)return null;
+  if(p[2][0]==='S'){const q=s.sp.find(x=>x.id===p[2].slice(1));return q&&{short:s.name.slice(0,6),port:q.name,full:`${s.name} ${q.name} (${q.t})`}}
+  const up=p[2][0]==='U',num=up?+p[2].slice(1):+p[2];
+  if(num>(up?s.up:s.n))return null;return{short:s.name.slice(0,6),port:p[2],full:s.name+(up?' uplink '+num:' port '+num)}}
+ const pc=S.pcs.find(x=>x.id===p[1]);if(!pc)return null;
+ if(p.length===3){const q=pc.sp.find(x=>x.id===p[2].slice(1));return q&&{short:pc.name.slice(0,6),port:q.name,full:`${pc.name} ${q.name} (${q.t})`}}
+ const ni=pc.nics.findIndex(x=>x.id===p[2]);if(ni<0||+p[3]>=pc.nics[ni].n)return null;
+ let f=0;for(let j=0;j<ni;j++)f+=pc.nics[j].n;
+ return{short:pc.name.slice(0,6),port:(ni+1)+'.'+(+p[3]+1),full:`${pc.name} NIC ${ni+1} port ${+p[3]+1} (#${f+ +p[3]+1})`}}
+function prune(){S.links=S.links.filter(l=>info(l.a)&&info(l.b));
+ S.links.forEach(l=>{l.v=l.v.filter(vl);if(!l.v.length)l.v=[S.vlans[0].id]});
+ for(const k of Object.keys(S.pv)){S.pv[k]=S.pv[k].filter(vl);if(!info(k)||!S.pv[k].length||linkOf(k))delete S.pv[k]}
+ if(sel&&!info(sel))sel=null}
+const grad=vs=>vs.length<2?vcol(vs[0]):'linear-gradient(90deg,'+vs.map((v,i)=>`${vcol(v)} ${i*100/vs.length}% ${(i+1)*100/vs.length}%`).join(',')+')';
+function port(k,b,cls){const L=linkOf(k),o=L&&info(other(L,k)),vs=getV(k);
+ return `<button class="port ${cls||''}${vs.length?' on':''}${sel===k?' sel':''}" data-a="port" data-k="${k}" ${vs.length?`style="--g:${grad(vs)}"`:''} title="${esc(info(k).full)}${vs.length?' · '+esc(vs.map(x=>vl(x).name).join(', ')):''}"><b>${esc(b)}</b><i>${o?esc(o.short)+'<br>'+esc(o.port):cls==='up'?'uplink':cls==='sp'?'special':'free'}</i></button>`}
+function spEdit(o){const open=spOpen.has(o.id);
+ return `<div class="row"><button data-a="togsp" data-id="${o.id}">Special ports (${o.sp.length}) ${open?'▴':'▾'}</button></div>`+(open?o.sp.map(x=>`<div class="row"><input data-f="spname" data-id="${o.id}" data-sp="${x.id}" value="${esc(x.name)}" aria-label="Special port name"><select data-f="sptype" data-id="${o.id}" data-sp="${x.id}">${TY.map(t=>`<option${t===x.t?' selected':''}>${t}</option>`).join('')}</select><button data-a="delsp" data-id="${o.id}" data-sp="${x.id}">Remove</button></div>`).join('')+`<div class="row"><button data-a="addsp" data-id="${o.id}">Add special port</button></div>`:'')}
+function swHTML(s){let p='',u='',q='';
+ for(let i=1;i<=s.n;i++)p+=port(`sw:${s.id}:${i}`,i);
+ for(let i=1;i<=s.up;i++)u+=port(`sw:${s.id}:U${i}`,'U'+i,'up');
+ s.sp.forEach(x=>q+=port(`sw:${s.id}:S${x.id}`,x.name.slice(0,4),'sp'));
+ const d=`data-id="${s.id}"`;
+ return `<div class="sw"><div class="row"><input class="name" data-f="swname" ${d} value="${esc(s.name)}" aria-label="Switch name">${s.up?`<span class="badge up">${s.up} uplink${s.up>1?'s':''}</span>`:''}${s.sp.length?`<span class="badge sp">${s.sp.length} special</span>`:''}${s.wifi?`<span class="badge wf">Wi-Fi${s.ssid?' · '+esc(s.ssid):''}</span>`:''}<button data-a="delsw" ${d}>Remove</button></div>
+ <div class="row"><label>Ports <input type="number" min="1" max="96" data-f="swn" ${d} value="${s.n}"></label><label>Levels <input type="number" min="1" max="10" data-f="swrows" ${d} value="${s.rows}"></label><label>Uplinks <input type="number" min="0" max="4" data-f="swup" ${d} value="${s.up}"></label><label><input type="checkbox" data-f="swwifi" ${d} ${s.wifi?'checked':''}> Wi-Fi</label>${s.wifi?`<input data-f="swssid" ${d} placeholder="SSID" value="${esc(s.ssid)}">`:''}</div>
+ ${spEdit(s)}
+ <div class="face"><div class="grid" style="grid-template-rows:repeat(${s.rows},54px)">${p}</div>${s.up?`<div class="grid upg" style="grid-template-rows:repeat(${Math.min(s.rows,s.up)},54px)">${u}</div>`:''}${s.sp.length?`<div class="grid spg" style="grid-template-rows:repeat(${Math.min(s.rows,s.sp.length)},54px)">${q}</div>`:''}</div></div>`}
+function pcHTML(pc,pi){const tot=pc.nics.reduce((a,x)=>a+x.n,0),d=`data-pc="${pc.id}"`;
+ let h=`<div class="pc" style="--c:${COL[pi%COL.length]}"><div class="row"><input class="name" data-f="pcname" ${d} value="${esc(pc.name)}" aria-label="PC name"><span class="tot">${tot} port${tot==1?'':'s'}</span><button data-a="addnic" ${d}>Add NIC</button><button data-a="delpc" ${d}>Remove PC</button></div>${spEdit(pc)}<div class="chassis">`;
+ pc.nics.forEach((nic,ni)=>{const n=`${d} data-nic="${nic.id}"`;
+  h+=`<div class="nic"><div class="ctl">NIC ${ni+1}<input type="number" min="1" max="10" data-f="nicn" ${n} value="${nic.n}" aria-label="Ports on NIC ${ni+1}"><button data-a="left" ${n} aria-label="Move left">‹</button><button data-a="right" ${n} aria-label="Move right">›</button><button data-a="delnic" ${n} aria-label="Remove NIC">×</button></div><div class="pp">`;
+  for(let i=0;i<nic.n;i++)h+=port(`pc:${pc.id}:${nic.id}:${i}`,i+1);
+  h+=`</div></div>`});
+ if(pc.sp.length)h+=`<div class="nic spn"><div class="ctl">Special</div><div class="pp">${pc.sp.map(x=>port(`pc:${pc.id}:S${x.id}`,x.name.slice(0,4),'sp')).join('')}</div></div>`;
+ return h+`</div></div>`}
+const chips=(on,act,extra,sm)=>S.vlans.map(v=>`<button class="chip${sm?' sm':''}${on(v.id)?' on':''}" data-a="${act}" ${extra} data-v="${v.id}" title="${esc(v.sub||'No subnet')}"><span class="dot" style="--c:${v.c}"></span>${esc(v.name)}</button>`).join('');
+function syncNames(){S.vlans.forEach(v=>{if(v.num===undefined){const m=/\d+/.exec(v.name||'');v.num=m?+m[0]:1;v.nm=(v.name||'').replace(/^VLAN\s*\d+\s*/i,'');v.sub=v.sub||''}v.name='VLAN '+v.num+(v.nm?' · '+v.nm:'')})}
+const ip=s=>{const m=/^(\d+)\.(\d+)\.(\d+)\.(\d+)\/(\d+)$/.exec(s||'');if(!m||m.slice(1,5).some(x=>+x>255)||+m[5]>32)return null;const n=((+m[1]*256+ +m[2])*256+ +m[3])*256+ +m[4],z=2**(32-m[5]),a=Math.floor(n/z)*z;return[a,a+z-1]};
+function render(){syncNames();prune();
+ let c=`<h2>Cables</h2><div class="row" style="margin-top:10px"><button data-a="showall">All</button><button data-a="shownone">None</button>${chips(v=>S.show[v],'showv','')}<button data-a="editv">${editV?'Done':'Edit VLANs'}</button></div><div class="row"><label>Default VLAN for new cables <select data-f="newv">${S.vlans.map(v=>`<option value="${v.id}"${v.id===S.newV?' selected':''}>${esc(v.name)}</option>`).join('')}</select></label><span class="tot">Dashed cable = trunk (several VLANs)</span></div>${S.vlans.some(v=>v.sub)?`<p class="tot" style="margin:0 0 8px">${S.vlans.filter(v=>v.sub).map(v=>esc(v.name)+': '+esc(v.sub)).join(' · ')}</p>`:''}`;
+ if(editV)c+=S.vlans.map(v=>{const r=ip(v.sub),dup=S.vlans.some(o=>o!==v&&o.num===v.num),ov=r&&S.vlans.some(o=>{const q=o!==v&&ip(o.sub);return q&&q[0]<=r[1]&&r[0]<=q[1]});
+ return `<div class="row"><input type="color" data-f="vcolor" data-v="${v.id}" value="${v.c}" aria-label="Color"><input type="number" min="1" max="4094" style="width:72px" data-f="vnum" data-v="${v.id}" value="${v.num}" aria-label="VLAN ID"><input data-f="vname" data-v="${v.id}" value="${esc(v.nm)}" placeholder="Name" aria-label="VLAN name"><input style="width:160px" data-f="vsub" data-v="${v.id}" value="${esc(v.sub||'')}" placeholder="192.168.10.0/24" aria-label="Subnet"><button data-a="delv" data-v="${v.id}">Remove</button>${dup?'<span class="tot">ID already used</span>':''}${v.sub&&!r?'<span class="tot">Use CIDR, e.g. 192.168.10.0/24</span>':''}${ov?'<span class="tot">Subnet overlaps another VLAN</span>':''}</div>`}).join('')+`<button data-a="addv">Add VLAN</button>`;
+ $('cab').innerHTML=c;
+ $('app').innerHTML=`<div class="row"><h2>Switches</h2><button class="pri" data-a="addsw">Add switch</button></div>`+S.sws.map(swHTML).join('')+`<div class="row"><h2>PCs</h2><button class="pri" data-a="addpc">Add PC</button></div>`+S.pcs.map(pcHTML).join('');
+ const pk=Object.keys(S.pv);
+ $('tbl').innerHTML=`<div class="row"><h2>Links</h2><button data-a="copy">Copy CSV</button><button data-a="reset">Clear all links</button></div>`+
+  (S.links.length?`<div class="scroll"><table><tr><th>From</th><th>To</th><th>VLANs</th><th></th></tr>${S.links.map(l=>`<tr><td>${esc(info(l.a).full)}</td><td>${esc(info(l.b).full)}</td><td>${chips(v=>l.v.includes(v),'tv',`data-l="${l.id}"`,1)}</td><td><button data-a="rl" data-l="${l.id}">Remove</button></td></tr>`).join('')}</table></div>`:`<p class="tot">No links yet.</p>`)+
+  (pk.length?`<div class="row" style="margin-top:12px"><h2>Uncabled ports with VLANs</h2></div><div class="scroll"><table>${pk.map(k=>`<tr><td>${esc(info(k).full)}</td><td>${S.pv[k].map(x=>esc(vl(x).name)).join(', ')}</td><td><button data-a="cpv" data-k="${k}">Clear</button></td></tr>`).join('')}</table></div>`:'');
+ bar();syncView();requestAnimationFrame(draw);diagram()}
+function draw(){const inner=$('inner'),ir=inner.getBoundingClientRect(),pos={};
+ inner.querySelectorAll('.port').forEach(p=>{const r=p.getBoundingClientRect();pos[p.dataset.k]=[r.left-ir.left+r.width/2,r.top-ir.top+r.height/2]});
+ let s='';
+ for(const L of S.links){const vis=L.v.filter(v=>S.show[v]),A=pos[L.a],B=pos[L.b];if(!vis.length||!A||!B)continue;
+  const dy=Math.max(40,Math.abs(B[1]-A[1])/2)*(B[1]>=A[1]?1:-1),trunk=L.v.length>1,col=vcol(vis[0]);
+  const d=`M${A[0]} ${A[1]}C${A[0]} ${A[1]+dy},${B[0]} ${B[1]-dy},${B[0]} ${B[1]}`;
+  if(sel&&(L.a===sel||L.b===sel))s+=`<path d="${d}" fill="none" style="stroke:var(--ink)" stroke-width="7" stroke-linecap="round" opacity=".35"/>`;
+  s+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="${trunk?3.5:2.5}" ${trunk?'stroke-dasharray="9 5"':''} stroke-linecap="round" opacity=".92"/><circle cx="${A[0]}" cy="${A[1]}" r="3.5" fill="${col}"/><circle cx="${B[0]}" cy="${B[1]}" r="3.5" fill="${col}"/>`}
+ const svg=$('cables');svg.setAttribute('width',inner.scrollWidth);svg.setAttribute('height',inner.scrollHeight);svg.innerHTML=s}
+function bar(){const b=$('bar');
+ if(!sel){b.innerHTML=`<span class="tot">Tap a port to set its VLANs or start a cable.</span>`;return}
+ const L=linkOf(sel),vs=getV(sel);
+ b.innerHTML=`<span>${esc(info(sel).full)}${L?' ↔ '+esc(info(other(L,sel)).full):' · tap another free port to cable it'}</span><span class="row" style="margin:0">VLANs: ${chips(v=>vs.includes(v),'pv','')}</span><span>${L?'<button data-a="unlink">Unlink</button> ':''}<button data-a="cancel">Done</button></span>`}
+function addLink(a,b){const v=(getV(a).length?getV(a):getV(b).length?getV(b):[S.newV]).slice();S.links.push({id:uid(),a,b,v})}
+function unlink(L){S.pv[L.a]=L.v.slice();S.pv[L.b]=L.v.slice();S.links=S.links.filter(x=>x!==L)}
+document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;
+ const a=el.dataset.a,d=el.dataset,pc=S.pcs.find(p=>p.id===d.pc),dv=dev(d.id),LL=S.links.find(l=>l.id===d.l);
+ if(a==='port'){const k=d.k;
+  if(!sel)sel=k;else if(sel===k)sel=null;
+  else if(!linkOf(sel)&&!linkOf(k)&&!(sel.startsWith('pc')&&k.startsWith('pc')))addLink(sel,k);
+  else sel=k}
+ else if(a==='vw'){view=d.w;S.view=view;save()}
+ else if(a==='zi')Z=Math.min(2.5,Z*1.25);
+ else if(a==='zo')Z=Math.max(.3,Z/1.25);
+ else if(a==='zf')Z=Math.min(1,($('dwrap').clientWidth-6)/dim.w);
+ else if(a==='arr'){S.pos={};save()}
+ else if(a==='lab'){S.lab=S.lab===false;save()}
+ else if(a==='edge')dsel=d.l;
+ else if(a==='xport'){xport();return}
+ else if(a==='cancel')sel=null;
+ else if(a==='unlink'){unlink(linkOf(sel));save()}
+ else if(a==='rl'){unlink(LL);save()}
+ else if(a==='tv'){const i=LL.v.indexOf(d.v);if(i>=0){if(LL.v.length>1)LL.v.splice(i,1)}else LL.v.push(d.v);save()}
+ else if(a==='pv'){const L=linkOf(sel),cur=getV(sel).slice(),i=cur.indexOf(d.v);if(i>=0)cur.splice(i,1);else cur.push(d.v);
+  if(L){if(cur.length)L.v=cur}else S.pv[sel]=cur;save()}
+ else if(a==='cpv'){delete S.pv[d.k];save()}
+ else if(a==='showv'){S.show[d.v]=!S.show[d.v];save()}
+ else if(a==='showall'){S.vlans.forEach(v=>S.show[v.id]=true);save()}
+ else if(a==='shownone'){S.vlans.forEach(v=>S.show[v.id]=false);save()}
+ else if(a==='editv')editV=!editV;
+ else if(a==='addv'){const id=uid();S.vlans.push({id,num:Math.floor(Math.max(0,...S.vlans.map(v=>v.num))/10)*10+10,nm:'',sub:'',c:COL[S.vlans.length%10]});S.show[id]=true;save()}
+ else if(a==='delv'){if(S.vlans.length>1){S.vlans=S.vlans.filter(v=>v.id!==d.v);if(S.newV===d.v)S.newV=S.vlans[0].id;save()}}
+ else if(a==='togsp'){spOpen.has(d.id)?spOpen.delete(d.id):spOpen.add(d.id)}
+ else if(a==='addsp'){dv.sp.push({id:uid(),name:'Console',t:'Console'});save()}
+ else if(a==='delsp'){dv.sp=dv.sp.filter(x=>x.id!==d.sp);save()}
+ else if(a==='addsw'){S.sws.push({id:uid(),name:'Switch '+(S.sws.length+1),n:24,rows:2,up:2,wifi:false,ssid:'',sp:[]});save()}
+ else if(a==='delsw'){if(confirm('Remove this switch and its links?')){S.sws=S.sws.filter(s=>s.id!==d.id);save()}}
+ else if(a==='addpc'){S.pcs.push({id:uid(),name:'PC-'+(S.pcs.length+1),nics:[{id:uid(),n:2}],sp:[]});save()}
+ else if(a==='delpc'){if(confirm('Remove '+pc.name+' and its links?')){S.pcs=S.pcs.filter(p=>p!==pc);save()}}
+ else if(a==='addnic'){pc.nics.push({id:uid(),n:1});save()}
+ else if(a==='delnic'){pc.nics=pc.nics.filter(x=>x.id!==d.nic);save()}
+ else if(a==='left'||a==='right'){const i=pc.nics.findIndex(x=>x.id===d.nic),j=a==='left'?i-1:i+1;if(j>=0&&j<pc.nics.length){[pc.nics[i],pc.nics[j]]=[pc.nics[j],pc.nics[i]];save()}}
+ else if(a==='reset'){if(confirm('Clear every link?')){S.links=[];sel=null;save()}}
+ else if(a==='copy'){const q=s=>'"'+s.replace(/"/g,'""')+'"';
+  const csv='from,to,vlans,type,subnets\n'+S.links.map(l=>[q(info(l.a).full),q(info(l.b).full),q(l.v.map(x=>vl(x).name).join('; ')),l.v.length>1?'trunk':'access',q(l.v.map(x=>vl(x).sub||'-').join('; '))].join(',')).join('\n');
+  try{navigator.clipboard.writeText(csv);el.textContent='Copied'}catch(err){el.textContent='Copy blocked'}return}
+ render()});
+document.addEventListener('change',e=>{const el=e.target,f=el.dataset.f;if(!f)return;const d=el.dataset,pc=S.pcs.find(p=>p.id===d.pc),sw=S.sws.find(s=>s.id===d.id),
+ v=(lo,hi)=>Math.min(hi,Math.max(lo,parseInt(el.value)||lo));
+ if(f==='swname')sw.name=el.value||sw.name;
+ else if(f==='swn')sw.n=v(1,96);
+ else if(f==='swrows')sw.rows=v(1,10);
+ else if(f==='swup')sw.up=v(0,4);
+ else if(f==='swwifi')sw.wifi=el.checked;
+ else if(f==='swssid')sw.ssid=el.value;
+ else if(f==='pcname')pc.name=el.value||pc.name;
+ else if(f==='nicn')pc.nics.find(x=>x.id===d.nic).n=v(1,10);
+ else if(f==='spname'){const q=dev(d.id).sp.find(x=>x.id===d.sp);q.name=el.value||q.name}
+ else if(f==='sptype')dev(d.id).sp.find(x=>x.id===d.sp).t=el.value;
+ else if(f==='newv')S.newV=el.value;
+ else if(f==='vname')vl(d.v).nm=el.value.trim();
+ else if(f==='vnum')vl(d.v).num=v(1,4094);
+ else if(f==='vsub')vl(d.v).sub=el.value.trim();
+ else if(f==='vcolor')vl(d.v).c=el.value;
+ save();render()});
+const PW=14,PP=17;let LY={},drag=null;
+function syncView(){document.body.classList.toggle('dv',view==='dg');document.querySelectorAll('[data-w]').forEach(b=>b.classList.toggle('on',b.dataset.w===view))}
+function lay(d,isSw){const p={},g=[];let x=8,h;
+ const place=(keys,r,y0)=>{keys.forEach((k,i)=>{p[k]=[x+Math.floor(i/r)*PP,y0+(i%r)*PP]});x+=Math.ceil(keys.length/r)*PP};
+ if(isSw){const y0=30,r=Math.max(1,Math.min(d.rows,d.n));
+  place(Array.from({length:d.n},(_,i)=>`sw:${d.id}:${i+1}`),r,y0);
+  const sep=()=>{x+=8;g.push({ln:x-2,y1:y0-4,y2:y0+r*PP});x+=8};
+  if(d.up){sep();place(Array.from({length:d.up},(_,i)=>`sw:${d.id}:U${i+1}`),Math.min(r,d.up),y0)}
+  if(d.sp.length){sep();place(d.sp.map(q=>`sw:${d.id}:S${q.id}`),Math.min(r,d.sp.length),y0)}
+  h=y0+r*PP+6}
+ else{const y0=44;
+  d.nics.forEach((n,i)=>{const sx=x;place(Array.from({length:n.n},(_,j)=>`pc:${d.id}:${n.id}:${j}`),1,y0);g.push({bx:sx-4,by:y0-17,bw:n.n*PP+5,bh:PP+23,t:'NIC '+(i+1)});x+=9});
+  if(d.sp.length){const sx=x;place(d.sp.map(q=>`pc:${d.id}:S${q.id}`),1,y0);g.push({bx:sx-4,by:y0-17,bw:d.sp.length*PP+5,bh:PP+23,t:'Special'});x+=9}
+  h=y0+PP+12}
+ return{w:Math.max(x+4,d.name.length*8+20,isSw&&d.wifi?170:0),h,p,g}}
+function ensurePos(){let bottom=0;
+ [...S.sws,...S.pcs].forEach(d=>{if(S.pos[d.id])bottom=Math.max(bottom,S.pos[d.id].y+LY[d.id].h)});
+ const rowPlace=(list,y)=>{let x=20,rh=0;list.forEach(d=>{const l=LY[d.id];if(x+l.w>1000&&x>20){x=20;y+=rh+40;rh=0}S.pos[d.id]={x,y};x+=l.w+30;rh=Math.max(rh,l.h)});return y+rh};
+ let b=bottom;const ns=S.sws.filter(d=>!S.pos[d.id]);if(ns.length)b=rowPlace(ns,b?b+60:20);
+ const np=S.pcs.filter(d=>!S.pos[d.id]);if(np.length)rowPlace(np,b?b+90:20)}
+function nodeSVG(d,isSw){const l=LY[d.id],o=S.pos[d.id];
+ let s=`<g class="nd" data-n="${d.id}" transform="translate(${o.x},${o.y})"><rect class="nb" width="${l.w}" height="${l.h}" rx="8" style="stroke:${isSw?'var(--acc)':COL[S.pcs.indexOf(d)%10]}"/><text class="nt" x="8" y="17">${esc(d.name)}</text>`;
+ if(isSw&&d.wifi)s+=`<text class="ns" x="${l.w-8}" y="17" text-anchor="end">Wi-Fi${d.ssid?' · '+esc(d.ssid):''}</text>`;
+ l.g.forEach(g=>{if(g.ln!=null)s+=`<line class="gl" x1="${g.ln}" x2="${g.ln}" y1="${g.y1}" y2="${g.y2}"/>`;else s+=`<rect class="gb" x="${g.bx}" y="${g.by}" width="${g.bw}" height="${g.bh}" rx="4"/><text class="ns" x="${g.bx+4}" y="${g.by+11}">${g.t}</text>`});
+ for(const k in l.p){const[x,y]=l.p[k],vs=getV(k);
+  let r=`<rect class="pr${linkOf(k)?' lk':''}" x="${x}" y="${y}" width="${PW}" height="${PW}" rx="2"/>`;
+  vs.forEach((v,i)=>r+=`<rect x="${x+i*PW/vs.length}" y="${y+PW-5}" width="${PW/vs.length}" height="5" fill="${vcol(v)}"/>`);
+  s+=`<g><title>${esc(info(k).full)}${vs.length?' · '+esc(vs.map(v=>vl(v).name).join(', ')):''}</title>${r}</g>`}
+ return s+'</g>'}
+function edges(){let s='';
+ const pt=k=>{const id=k.split(':')[1],q=LY[id]&&LY[id].p[k],o=S.pos[id];return q&&o?[o.x+q[0]+PW/2,o.y+q[1]+PW/2]:null};
+ for(const l of S.links){const vis=l.v.filter(v=>S.show[v]),A=pt(l.a),B=pt(l.b);if(!vis.length||!A||!B)continue;
+  const dx=B[0]-A[0],dy=B[1]-A[1],hz=Math.abs(dx)>Math.abs(dy)*1.5,k1=Math.max(40,(hz?Math.abs(dx):Math.abs(dy))/2),sx=Math.sign(dx)||1,sy=Math.sign(dy)||1;
+  const c1=hz?[A[0]+sx*k1,A[1]]:[A[0],A[1]+sy*k1],c2=hz?[B[0]-sx*k1,B[1]]:[B[0],B[1]-sy*k1],col=vcol(vis[0]),trunk=l.v.length>1;
+  const d=`M${A[0]} ${A[1]}C${c1[0]} ${c1[1]},${c2[0]} ${c2[1]},${B[0]} ${B[1]}`;
+  const bz=t=>[0,1].map(i=>(1-t)**3*A[i]+3*(1-t)**2*t*c1[i]+3*(1-t)*t*t*c2[i]+t**3*B[i]);
+  if(dsel===l.id)s+=`<path d="${d}" fill="none" style="stroke:var(--ink)" stroke-width="8" stroke-linecap="round" opacity=".3"/>`;
+  s+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="${trunk?3.5:2.5}" ${trunk?'stroke-dasharray="9 5"':''} stroke-linecap="round" opacity=".92"/><circle cx="${A[0]}" cy="${A[1]}" r="3.5" fill="${col}"/><circle cx="${B[0]}" cy="${B[1]}" r="3.5" fill="${col}"/>`;
+  if(S.lab!==false){const p1=bz(.12),p2=bz(.88);s+=`<text class="el" x="${p1[0]}" y="${p1[1]-4}">${esc(info(l.a).port)}</text><text class="el" x="${p2[0]}" y="${p2[1]-4}">${esc(info(l.b).port)}</text>`}
+  s+=`<path class="eh" d="${d}" data-a="edge" data-l="${l.id}"/>`}
+ return s}
+function diagram(){if(view!=='dg')return;
+ const all=[...S.sws.map(d=>[d,1]),...S.pcs.map(d=>[d,0])];
+ LY={};all.forEach(([d,s])=>LY[d.id]=lay(d,s));ensurePos();
+ let W=300,H=200;all.forEach(([d])=>{const o=S.pos[d.id],l=LY[d.id];W=Math.max(W,o.x+l.w+40);H=Math.max(H,o.y+l.h+40)});dim={w:W,h:H};
+ const old=$('dwrap'),sx=old?old.scrollLeft:0,sy=old?old.scrollTop:0,di=dsel&&S.links.find(l=>l.id===dsel);
+ $('diag').innerHTML=`<div class="row"><button data-a="zo" aria-label="Zoom out">−</button><button data-a="zi" aria-label="Zoom in">+</button><button data-a="zf">Fit</button><button data-a="arr">Auto-arrange</button><button class="chip${S.lab!==false?' on':''}" data-a="lab">Port labels</button></div>
+ <div class="dwrap" id="dwrap"><svg id="dsvg" width="${W*Z}" height="${H*Z}"><g transform="scale(${Z})"><g>${all.map(([d,s])=>nodeSVG(d,s)).join('')}</g><g id="ge">${edges()}</g></g></svg></div>
+ <p class="tot">${di?esc(info(di.a).full)+' ↔ '+esc(info(di.b).full)+' · '+esc(di.v.map(v=>vl(v).name).join(', '))+(di.v.length>1?' (trunk)':''):'Drag devices to arrange them. Tap a cable for details. Cables follow the VLAN filter above.'}</p>`;
+ const w=$('dwrap');w.scrollLeft=sx;w.scrollTop=sy}
+document.addEventListener('pointerdown',e=>{const n=e.target.closest('[data-n]');if(!n||!$('dsvg')||!$('dsvg').contains(n))return;
+ const id=n.dataset.n;drag={id,n,sx:e.clientX,sy:e.clientY,ox:S.pos[id].x,oy:S.pos[id].y};e.preventDefault()});
+addEventListener('pointermove',e=>{if(!drag)return;const p=S.pos[drag.id]={x:Math.max(0,drag.ox+(e.clientX-drag.sx)/Z),y:Math.max(0,drag.oy+(e.clientY-drag.sy)/Z)};
+ drag.n.setAttribute('transform',`translate(${p.x},${p.y})`);$('ge').innerHTML=edges()});
+const endDrag=()=>{if(drag){drag=null;save();render()}};
+addEventListener('pointerup',endDrag);addEventListener('pointercancel',endDrag);
+function xport(){const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='port-map.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),500)}
+$('imp').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const j=JSON.parse(r.result);if(!j.sws||!j.pcs||!j.vlans)throw 0;S=j;S.sws.forEach(s=>s.sp=s.sp||[]);S.pcs.forEach(p=>p.sp=p.sp||[]);S.pv=S.pv||{};S.pos=S.pos||{};S.links=S.links||[];S.show=S.show||{};view=S.view||'cf';sel=null;save();render()}catch(x){alert('That file is not a Port Mapper data file.')}};
+ r.readAsText(f);e.target.value=''});
+addEventListener('resize',draw);
+render();
+</script></body></html>
